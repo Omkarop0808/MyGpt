@@ -1,0 +1,72 @@
+/* MockInterview.css */
+
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #121212;
+  color: white;
+  height: 100%;
+}
+
+.interview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  min-height: 100vh;
+  background: linear-gradient(145deg, #1f1f1f, #121212);
+}
+
+.question-card, .end-screen {
+  background-color: #1e1e1e;
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 255, 255, 0.15);
+  width: 100%;
+  max-width: 800px;
+  text-align: center;
+  transition: 0.3s;
+}
+
+.question-text {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+  color: #aaf6ff;
+}
+
+.btn-group {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+button {
+  background: #0a84ff;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+button:hover {
+  background: #0066cc;
+}
+
+.transcript {
+  margin-top: 1rem;
+  color: #ccc;
+  font-style: italic;
+}
+
+.warning {
+  color: red;
+  padding: 2rem;
+  text-align: center;
+  font-size: 1.2rem;
+}

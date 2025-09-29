@@ -1,0 +1,15 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import 'dotenv/config';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+async function main() {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // or "gemini-2.5-flash"
+  const result = await model.generateContent("Difference between MongoDB and SQL");
+  const response = await result.response;
+  const text = response.text();
+
+  console.log("AI Response:", text);
+}
+
+main();
