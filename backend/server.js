@@ -5,6 +5,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import chatRoutes from "./routes/chat.js";
 import interviewRoutes from "./routes/interview.js";
+import authRoutes from "./routes/auth.js";
 
 
 
@@ -12,12 +13,16 @@ import interviewRoutes from "./routes/interview.js";
 const app = express();
 
 // Middleware setup
-app.use(cors()); // Allow cross-origin requests
+app.use(cors({
+  origin: process.env.CLIENT_ORIGIN || "*",
+  credentials: true,
+})); // Allow cross-origin requests
 app.use(express.json()); // Parse JSON request bodies
 
 
-app.use("/api",chatRoutes);
-// app.use("/api/interview", interviewRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api", chatRoutes);
+app.use("/api/interview", interviewRoutes);
 
 // Server port
 const PORT = process.env.PORT || 3000;

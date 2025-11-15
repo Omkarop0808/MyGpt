@@ -1,132 +1,213 @@
-import React from 'react'
+import { useContext, useEffect, useState } from "react";
 import "./SideBar.css";
-import {MyContext} from "./MyContext.jsx";
-import { useContext,useEffect } from 'react';
-import {v1 as uuidv1} from "uuid";
-import { Link } from 'react-router-dom';
+import { MyContext } from "./MyContext.jsx";
+import { v1 as uuidv1 } from "uuid";
+import { NavLink, useNavigate } from "react-router-dom";
+import { apiRequest } from "./lib/api";
+
 function SideBar() {
-  const {allThreads,setAllThreads,currThreadId,setNewChat,setPrompt,setReply,setCurrThreadId,setPrevChats} = useContext(MyContext);
+  const {
+    allThreads,
+    setAllThreads,
+    currThreadId,
+    setCurrThreadId,
+    setNewChat,
+    setPrompt,
+    setReply,
+    setPrevChats,
+    token,
+    user,
+    logout,
+  } = useContext(MyContext);
 
-  const getAllThreads =async()=>{
-    try{
-       const response = await fetch("http://localhost:3000/api/thread");
-       const res = await response.json();
-       
-      //  console.log(res);
-      const filterData = res.map(thread => ({ threadId: thread.threadId, title: thread.title }));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-      //  console.log(filterData);
-       setAllThreads(filterData);
-      //  store threadId and title
-
-      
-    }catch(err){
-        console.log(err);
+  useEffect(() => {
+    if (!token) {
+      setAllThreads([]);
+      return;
     }
 
+    const fetchThreads = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const data = await apiRequest("/api/thread", { token });
+        const threads = Array.isArray(data?.threads) ? data.threads : [];
+        const getTime = (value) => {
+          const parsed = Date.parse(value);
+          return Number.isNaN(parsed) ? 0 : parsed;
+        };
+        const sorted = [...threads].sort(
+          (a, b) => getTime(b.updated_At) - getTime(a.updated_At),
+        );
+        setAllThreads(sorted);
+      } catch (err) {
+        setError(err.message || "Unable to load threads.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchThreads();
+  }, [token, setAllThreads]);
+
+  const createNewChat = () => {
+    const newThreadId = uuidv1();
+    setNewChat(true);
+    setPrompt("");
+    setReply(null);
+    setCurrThreadId(newThreadId);
+    setPrevChats([]);
+    navigate("/");
   };
 
-  useEffect(()=>{
+  const changeThread = async (threadId) => {
+    if (threadId === currThreadId) return;
 
-      getAllThreads();
-  },[currThreadId]);
+    try {
+      const data = await apiRequest(`/api/thread/${threadId}`, {
+        token,
+      });
 
-
-  const createNewChat = ()=>{
-     setNewChat(true);
-     setPrompt("");
-     setReply(null);
-     setCurrThreadId(uuidv1());
-     setPrevChats([]);
-  }
-
-  const changeThread =async(newThreadId)=>{
-    setCurrThreadId(newThreadId);
-    try{
-
-       const response = await fetch(`http://localhost:3000/api/thread/${newThreadId}`);
-       const res = await response.json();
-       console.log(res);
-       setPrevChats(res);
-       setNewChat(false);
-       setReply(null);
-    }catch(err){
-      console.log(err);
-
+      setCurrThreadId(threadId);
+      setPrevChats(data?.messages || []);
+      setNewChat(false);
+      setReply(null);
+      navigate("/");
+    } catch (err) {
+      setError(err.message || "Unable to open the thread.");
     }
-    
-    
-  }
+  };
 
   const deleteThread = async (threadId) => {
-  try {
-    const response = await fetch(`http://localhost:3000/api/thread/${threadId}`, {
-      method: "DELETE",
-    });
+    try {
+      setError("");
+      await apiRequest(`/api/thread/${threadId}`, {
+        method: "DELETE",
+        token,
+      });
 
-    if (response.status === 200) {
-      console.log("Thread deleted successfully (200 No Content)");
+      setAllThreads((prev) =>
+        prev.filter((thread) => thread.threadId !== threadId),
+      );
 
-
-    } 
-    // update threads re-render
-    setAllThreads(prev => prev.filter(thread => thread.threadId != threadId));
-    if(threadId === currThreadId){
-      createNewChat();
+      if (threadId === currThreadId) {
+        createNewChat();
+      }
+    } catch (err) {
+      setError(err.message || "Unable to delete the thread.");
     }
-  } catch (err) {
-    console.error("Error deleting thread:", err);
-  }
-};
+  };
+
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to log out?")) {
+      logout();
+      navigate("/login", { replace: true });
+    }
+  };
 
   return (
-   
-      <section className="sidebar">
-        {/* new chat button  */}
-        <button onClick={createNewChat}>
-            <img src="src/assets/blacklogo.png" alt="gpt logo" className="logo" />
-            <span><i className="fa-solid fa-pen-to-square"></i></span>
-
+    <aside className="sidebar">
+      <div className="sidebar-header">
+        <button type="button" onClick={createNewChat} className="sidebar-new">
+          <i className="fa-solid fa-plus" />
+          <span>New chat</span>
         </button>
-        
-        {/* mockinterview */}
-
-
-      <Link to="/mockinterview" style={{ textDecoration: 'none' }} >
-       <button className="mockInterview">
-         MockInterview &nbsp;   &nbsp;   &nbsp;   &nbsp;  &nbsp;  &nbsp;  &nbsp;
-        <img src="src/assets/interview.png" alt="gpt logo" className="logo" />
-       </button>
-      </Link>
-
-
-        {/* history */}
-        <ul className="history">
-            {
-             allThreads?.map((thread, idx) => (
-                <li key={idx}
-                  onClick={()=>changeThread(thread.threadId)}
-                  className={thread.threadId === currThreadId ? "highlighted":" "}
-                  >
-                   
-                  {thread.title}
-                  <i className="fa-solid fa-trash"
-                    onClick={(e)=>{
-                      e.stopPropagation();//stop event bubling
-                      deleteThread(thread.threadId);
-                  }} ></i>
-
-               </li>
-            ))
+        <nav className="sidebar-nav">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "sidebar-link-active" : ""}`
             }
-        </ul>
-        {/* sign */}
-        <div className="sign">
-            <p>By  omkar   &hearts;</p>
+          >
+            <i className="fa-solid fa-comments" />
+            Workspace
+          </NavLink>
+          <NavLink
+            to="/mockinterview"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "sidebar-link-active" : ""}`
+            }
+          >
+            <i className="fa-solid fa-person-chalkboard" />
+            Mock Interview
+          </NavLink>
+          <NavLink
+            to="/analysis"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "sidebar-link-active" : ""}`
+            }
+          >
+            <i className="fa-solid fa-chart-line" />
+            Analysis
+          </NavLink>
+        </nav>
+      </div>
+
+      <div className="sidebar-body">
+        <div className="sidebar-label">
+          <span>Recent threads</span>
+          {loading && <i className="fa-solid fa-rotate spinner" aria-hidden="true" />}
         </div>
-      </section>
-    
-  )
+
+        {error && <p className="sidebar-error">{error}</p>}
+
+        <ul className="history">
+          {allThreads.map((thread) => (
+            <li
+              key={thread.threadId}
+              className={`history-item ${
+                thread.threadId === currThreadId ? "highlighted" : ""
+              }`}
+            >
+              <button type="button" onClick={() => changeThread(thread.threadId)}>
+                <span>{thread.title || "Untitled"}</span>
+                <time>
+                  {thread.updated_At
+                    ? new Date(thread.updated_At).toLocaleDateString()
+                    : ""}
+                </time>
+              </button>
+              <button
+                type="button"
+                className="history-delete"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  deleteThread(thread.threadId);
+                }}
+                aria-label="Delete thread"
+              >
+                <i className="fa-solid fa-trash" />
+              </button>
+            </li>
+          ))}
+
+          {!allThreads.length && !loading && (
+            <li className="history-empty">
+              <i className="fa-solid fa-sparkles" aria-hidden="true" />
+              <span>Start your first conversation.</span>
+            </li>
+          )}
+        </ul>
+      </div>
+
+      <footer className="sidebar-footer">
+        <div className="sidebar-user-info">
+          <p className="sidebar-user-name">{user?.name || "User"}</p>
+          <p className="sidebar-user-email">{user?.email || ""}</p>
+        </div>
+        <button type="button" onClick={handleLogout} className="sidebar-logout">
+          <i className="fa-solid fa-sign-out-alt" />
+          <span>Log out</span>
+        </button>
+        <p>Made with ❤️ by Omkar</p>
+      </footer>
+    </aside>
+  );
 }
 
 export default SideBar;

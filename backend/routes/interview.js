@@ -1,8 +1,10 @@
 import express from "express";
-import Thread from "../models/Thread.js";
 import getGeminiApiResponse from "../utils/gemini.js";
+import authenticate from "../middleware/auth.js";
 
 const router = express.Router(); // ✅ define the router
+
+router.use(authenticate);
 
 // Route for interview question/answer evaluation
 router.post("/ask", async (req, res) => {
@@ -26,9 +28,10 @@ Return response in JSON format:
 }
 `;
 
-    const response = await getGeminiApiResponse(prompt);
+    const aiResponse = await getGeminiApiResponse(prompt);
+    const rawText = aiResponse.response ?? "";
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Gemini response not in JSON format");
     const parsed = JSON.parse(jsonMatch[0]);
 
@@ -62,9 +65,10 @@ Respond in JSON format like this:
 }
 `;
 
-    const response = await getGeminiApiResponse(prompt);
+    const aiResponse = await getGeminiApiResponse(prompt);
+    const rawText = aiResponse.response ?? "";
 
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("Gemini response not in JSON format");
     const parsed = JSON.parse(jsonMatch[0]);
 

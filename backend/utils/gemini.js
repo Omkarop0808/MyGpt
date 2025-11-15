@@ -1,35 +1,142 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import 'dotenv/config';
 
-const getGeminiApiResponse = async(message) =>{
+// Retry configuration
+const MAX_RETRIES = 5;
+const INITIAL_DELAY = 2000; // 2 seconds
+const MAX_DELAY = 30000; // 30 seconds
 
-  const requestBody = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: message }]
-      }
-    ]
-  };
+// Circuit breaker state
+let apiFailureCount = 0;
+let lastFailureTime = 0;
+const FAILURE_THRESHOLD = 3;
+const CIRCUIT_BREAK_DURATION = 60000; // 1 minute
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
-      }
-    );
+// Fallback responses for when API is down
+const FALLBACK_RESPONSES = [
+  "I'm currently experiencing high traffic. The Gemini API is overloaded. Please try again in a few moments - the system will automatically recover!",
+  "The AI service is temporarily overloaded. I'm retrying automatically. Please bear with me for a moment...",
+  "Due to high demand, the AI service is busy. I'll keep retrying. Thank you for your patience!",
+];
 
-    const data = await response.json();
-    console.log("Gemini  response:", data);
+// Get fallback response
+const getFallbackResponse = () => {
+  return FALLBACK_RESPONSES[Math.floor(Math.random() * FALLBACK_RESPONSES.length)];
+};
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
-    return ({response : text});
-  } catch (e) {
-    console.error("Error from Gemini API:", e);
-    res.status(500).send({ error: "Something went wrong with Gemini API" });
+// Calculate delay with exponential backoff
+const getDelay = (attempt) => {
+  const delay = INITIAL_DELAY * Math.pow(2, attempt);
+  return Math.min(delay, MAX_DELAY);
+};
+
+// Check if circuit breaker is open
+const isCircuitBreakerOpen = () => {
+  if (apiFailureCount >= FAILURE_THRESHOLD) {
+    const timeSinceLastFailure = Date.now() - lastFailureTime;
+    if (timeSinceLastFailure < CIRCUIT_BREAK_DURATION) {
+      console.warn("⚠️ Circuit breaker OPEN - Using fallback response");
+      return true;
+    } else {
+      // Reset after duration
+      console.log("🔄 Circuit breaker RESETTING");
+      apiFailureCount = 0;
+      return false;
+    }
   }
-}
+  return false;
+};
+
+// Retry with exponential backoff
+const retryWithBackoff = async (fn, maxRetries = MAX_RETRIES) => {
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`🔵 Attempt ${attempt + 1}/${maxRetries}`);
+      const result = await fn();
+      
+      // Success - reset failure count
+      apiFailureCount = 0;
+      console.log("🟢 Success! Failure count reset");
+      return result;
+    } catch (error) {
+      lastError = error;
+      const errorMessage = error.message || String(error);
+      
+      // Check for retryable errors
+      const isRetryable = errorMessage.includes("503") || 
+                         errorMessage.includes("overloaded") ||
+                         errorMessage.includes("429") ||
+                         errorMessage.includes("UNAVAILABLE");
+      
+      if (!isRetryable) {
+        console.error("❌ Non-retryable error:", errorMessage);
+        throw error;
+      }
+      
+      if (attempt < maxRetries - 1) {
+        const delay = getDelay(attempt);
+        console.log(`⏳ Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  // All retries exhausted
+  apiFailureCount++;
+  lastFailureTime = Date.now();
+  console.error("❌ All retries exhausted after", maxRetries, "attempts");
+  throw lastError;
+};
+
+const getGeminiApiResponse = async(message) => {
+  console.log("🔵 Gemini function called with message:", message);
+  
+  // Check circuit breaker
+  if (isCircuitBreakerOpen()) {
+    console.log("🔴 Using fallback response (circuit breaker open)");
+    return { response: getFallbackResponse() };
+  }
+  
+  try {
+    // Attempt with retries
+    const result = await retryWithBackoff(async () => {
+      console.log("🔵 Initializing Google Generative AI...");
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      
+      console.log("🔵 Getting model: gemini-2.5-flash");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      
+      console.log("🔵 Sending message to Gemini...");
+      const result = await model.generateContent(message);
+      
+      console.log("🔵 Gemini response received");
+      const response = await result.response;
+      const text = response.text();
+      
+      if (!text) {
+        console.error("❌ No text in Gemini response");
+        throw new Error("Gemini returned empty response");
+      }
+      
+      console.log("🟢 Successfully extracted response from Gemini");
+      return text;
+    });
+    
+    return { response: result };
+  } catch (e) {
+    console.error("❌ Error from Gemini API after all retries:", e.message);
+    
+    // Increment failure count
+    apiFailureCount++;
+    lastFailureTime = Date.now();
+    
+    // Use fallback response
+    const fallback = getFallbackResponse();
+    console.log("📍 Using fallback response due to API failure");
+    return { response: fallback };
+  }
+};
 
 export default getGeminiApiResponse;

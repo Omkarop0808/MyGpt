@@ -1,13 +1,27 @@
-*{
-   color:#ececec;
-   font-family:Roboto, 'Open Sans','Helvetica Neue',sans-serif
+.app-shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 100vh;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75), rgba(8, 11, 19, 0.9));
+  color: #e2e8f0;
 }
 
-body{
-    margin:0;
-    padding:0;
+.app-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: rgba(11, 15, 23, 0.85);
+  backdrop-filter: blur(16px);
 }
-.app{
-    background-color: #212121;
-    display:flex;
+
+@media (max-width: 1024px) {
+  .app-shell {
+    grid-template-columns: 260px 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
 }

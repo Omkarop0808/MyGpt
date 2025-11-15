@@ -1,119 +1,212 @@
-import React from "react";
+import { useContext, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./ChatWindow.css";
 import Chat from "./Chat.jsx";
 import { MyContext } from "./MyContext.jsx";
-import { useContext,useState,useEffect } from "react";
 import { ScaleLoader } from "react-spinners";
-import ErrorBoundary from "./ErrorBoundary"; 
+import ErrorBoundary from "./ErrorBoundary";
+import { apiRequest } from "./lib/api";
 
 function ChatWindow() {
-  const { prompt, setPrompt, reply, setReply ,currThreadId,setPrevChats,setNewChat} = useContext(MyContext);
-   const [loading,setLoading] = useState(false);
-   const [isOpen,setIsOpen] = useState(false);
-   const [isToggle,setIsToggle] = useState(false);
+  const {
+    prompt,
+    setPrompt,
+    setReply,
+    currThreadId,
+    setCurrThreadId,
+    setPrevChats,
+    setNewChat,
+    setAllThreads,
+    token,
+    user,
+    logout,
+  } = useContext(MyContext);
 
-  const getReply = async()=>{
-    setLoading(true);
-    setNewChat(false);
-    console.log("message",prompt,"threadId",currThreadId);
+  const [loading, setLoading] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const navigate = useNavigate();
 
-     const options ={
-      method:"POST",
-      headers:{
-         "Content-Type":"application/json",
+  const userInitials = useMemo(() => {
+    if (!user?.name) return "ME";
+    return user.name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  }, [user?.name]);
 
-      },
-      body:JSON.stringify({
-        message:prompt,
-        threadId:currThreadId,
-      })
-     };
+  const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
-     try{
-         const response = await fetch("http://localhost:3000/api/chat",options);
-         const res = await response.json();
-         console.log(res);
-         setReply(res.reply);
-         
-     }catch(err){
-           console.log(err);
-     }
-     setLoading(false);
-     
-  }
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
-  // Append newchat to prevChat
-  useEffect(()=>{
-    if(prompt && reply ){
-        setPrevChats(prevChats =>(
-          [...prevChats,{
-             role:"user",
-             content:prompt,
-          },{
-              role:"assistant",
-              content:reply
-          }]
-        ))
+  const getReply = async () => {
+    const trimmedPrompt = prompt.trim();
+
+    if (!trimmedPrompt || loading) {
+      return;
     }
-     setPrompt(""); 
-  },[reply]);
-  
-  const handleProfileClick=()=>{
-     setIsOpen(!isOpen);
-  }
 
-  const handleToggleClick=()=>{
-    setIsToggle(!isToggle);
-  }
-  return (
-    <div className="chatWindow">
-      <div className="navbar">
-        <span>
-          MYGPT<i className="fa-solid fa-angle-down"></i>
-        </span>
-        <div className="userIcon">
-          <span className="usericonDiv" onClick={handleProfileClick}>
-            <i className="fa-solid fa-user"></i>
-          </span>
-        </div>
-      </div>
+    if (!token) {
+      setApiError("Session expired. Sign in again.");
+      navigate("/login");
+      return;
+    }
+
+    setLoading(true);
+    setApiError("");
+    setNewChat(false);
+    setPrevChats((prev) => [
+      ...(Array.isArray(prev) ? prev : []),
       {
-         isOpen && 
-          <div className="dropDown">
-            <div className="dropDownItem"><i className="fa-solid fa-gear"></i>Setting</div>
-            <div className="dropDownItem"><i class="fa-solid fa-cloud-arrow-up"></i>Upgrade Plan</div>
-            <div className="dropDownItem" onClick={handleToggleClick}>
-                <i className={`fa-solid ${isToggle ? "fa-toggle-on" : "fa-toggle-off"} toggleIcon`}></i>
-              <span className="themeLabel">Theme</span>
-            </div>
+        role: "user",
+        content: trimmedPrompt,
+      },
+    ]);
 
+    try {
+      const data = await apiRequest("/api/chat", {
+        method: "POST",
+        body: {
+          message: trimmedPrompt,
+          threadId: currThreadId,
+        },
+        token,
+      });
 
-            <div className="dropDownItem"><i class="fa-solid fa-right-from-bracket"></i>Logout</div>
-          </div>
+      if (data?.thread) {
+        setCurrThreadId(data.thread.threadId);
+        setPrevChats(data.thread.messages || []);
+        setAllThreads((prev) => {
+          const safePrev = Array.isArray(prev) ? prev : [];
+          const next = safePrev.filter(
+            (thread) => thread.threadId !== data.thread.threadId,
+          );
+          next.unshift({
+            threadId: data.thread.threadId,
+            title: data.thread.title || "New Chat",
+            updated_At: data.thread.updated_At || new Date().toISOString(),
+          });
+          return next;
+        });
       }
 
-      <ErrorBoundary>
-        <Chat/>
-      </ErrorBoundary>
+      setReply(data?.reply || "");
+    } catch (error) {
+      const errorMessage = error.message || "Unable to get a response right now.";
+      console.error(`Chat error:`, error);
       
+      // Show helpful error message
+      const displayMessage = errorMessage.includes("overloaded") 
+        ? "⚠️ API is busy. Retrying automatically... Please wait a moment."
+        : errorMessage;
+      
+      setPrevChats((prev) => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        if (safePrev.length === 0) {
+          return [];
+        }
+        // Keep user message, add error as assistant response
+        return [
+          ...safePrev.slice(0, -1),
+          safePrev[safePrev.length - 1],
+          {
+            role: "assistant",
+            content: "⚠️ " + displayMessage + "\n\n🔄 The system will automatically retry. Please wait...",
+          },
+        ];
+      });
+      setApiError(displayMessage);
+    } finally {
+      setPrompt("");
+      setLoading(false);
+    }
+  };
 
-       <ScaleLoader color="#fff" loading={loading}>
+  return (
+    <div className="chatWindow">
+      <header className="navbar">
+        <div className="navbar-title">
+          <span>MYGPT</span>
+          <small>Conversation workspace</small>
+        </div>
 
-       </ScaleLoader>
+        <div className="navbar-actions">
+          <button
+            type="button"
+            className="navbar-user"
+            onClick={toggleMenu}
+            aria-haspopup="true"
+            aria-expanded={isMenuOpen}
+          >
+            <span className="navbar-user-initials">{userInitials}</span>
+            <div className="navbar-user-details">
+              <strong>{user?.name || "User"}</strong>
+              <span>{user?.email}</span>
+            </div>
+            <i className={`fa-solid fa-chevron-${isMenuOpen ? "up" : "down"}`} />
+          </button>
+
+          {isMenuOpen && (
+            <div className="dropDown" role="menu">
+              <button type="button" className="dropDownItem">
+                <i className="fa-solid fa-gear" aria-hidden="true" />
+                Preferences
+              </button>
+              <button type="button" className="dropDownItem">
+                <i className="fa-solid fa-cloud-arrow-up" aria-hidden="true" />
+                Upgrade plan
+              </button>
+              <button type="button" className="dropDownItem" onClick={handleLogout}>
+                <i className="fa-solid fa-right-from-bracket" aria-hidden="true" />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      <ErrorBoundary>
+        <Chat />
+      </ErrorBoundary>
+
+      {apiError && (
+        <div className="chat-error" role="alert">
+          <i className="fa-solid fa-circle-exclamation" aria-hidden="true" />
+          <span>{apiError}</span>
+        </div>
+      )}
+
       <div className="chatInput">
+        <ScaleLoader color="#60a5fa" loading={loading} className="loader" />
         <div className="inputBox">
           <input
-            placeholder="Ask anything"
+            placeholder="Ask anything to start a new idea…"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e)=> e.key ==='Enter'? getReply():''}
+            onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                getReply();
+              }
+            }}
           />
-          <div id="submit" onClick={getReply}>
-            <i className="fa-solid fa-paper-plane"></i>
-          </div>
+          <button
+            id="submit"
+            type="button"
+            onClick={getReply}
+            disabled={loading}
+            aria-label="Send message"
+          >
+            <i className="fa-solid fa-paper-plane" />
+          </button>
         </div>
         <p className="info">
-          MYGPT CAN MAKE MISTAKES .CHECK IMPORTANT INFO.SEE COOKIES
+          Outputs are generated with Gemini. Review important information before taking action.
         </p>
       </div>
     </div>

@@ -17,10 +17,15 @@ const messageSchema = new mongoose.Schema({
 });
 
 const threadSchema = new mongoose.Schema({
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   threadId: {
     type: String,
     required: true,
-    unique: true,
+    trim: true,
   },
   title: {
     type: String,
@@ -38,6 +43,13 @@ const threadSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+});
+
+threadSchema.index({ owner: 1, threadId: 1 }, { unique: true });
+
+threadSchema.pre("save", function updateTimestamp(next) {
+  this.updated_At = new Date();
+  next();
 });
 
 export default mongoose.model("Thread", threadSchema);
