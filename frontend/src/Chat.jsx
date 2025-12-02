@@ -1,92 +1,243 @@
-import { useContext, useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeHighlight from "rehype-highlight";
-import "highlight.js/styles/github-dark.css";
-import "./Chat.css";
-import { MyContext } from "./MyContext";
+import { useContext, useEffect, useMemo, useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import remarkGfm from 'remark-gfm';
+import 'highlight.js/styles/github-dark.css';
+import './Chat.css';
+import { MyContext } from './MyContext';
+import { FaUser, FaRobot } from 'react-icons/fa';
+import { Prism as SyntaxHighlighter } from 'prism-react-renderer';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { FiCopy, FiCheck } from 'react-icons/fi';
+
+// Custom components for markdown rendering
+const CodeBlock = ({ node, inline, className, children, ...props }) => {
+  const [copied, setCopied] = useState(false);
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match ? match[1] : '';
+  const code = String(children).replace(/\n$/, '');
+
+  const handleCopy = () => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (inline) {
+    return <code className={className} {...props}>{children}</code>;
+  }
+
+  return (
+    <div className="code-block-container">
+      <div className="code-header">
+        <span className="language-tag">{language || 'code'}</span>
+        <CopyToClipboard text={code} onCopy={handleCopy}>
+          <button className="copy-button" aria-label="Copy code">
+            {copied ? <FiCheck size={14} /> : <FiCopy size={14} />}
+            <span>{copied ? 'Copied!' : 'Copy'}</span>
+          </button>
+        </CopyToClipboard>
+      </div>
+      <div className="code-content">
+        {language ? (
+          <SyntaxHighlighter
+            language={language}
+            style={undefined}
+            customStyle={{
+              margin: 0,
+              padding: '1rem',
+              background: 'var(--code-bg)',
+              borderRadius: '0 0 6px 6px',
+              fontSize: '0.9em',
+              lineHeight: 1.5,
+            }}
+            codeTagProps={{
+              style: {
+                fontFamily: 'SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace',
+              },
+            }}
+            {...props}
+          >
+            {code}
+          </SyntaxHighlighter>
+        ) : (
+          <pre
+            className="hljs"
+            style={{
+              margin: 0,
+              padding: '1rem',
+              background: 'var(--code-bg)',
+              borderRadius: '0 0 6px 6px',
+              overflowX: 'auto',
+              fontSize: '0.9em',
+              lineHeight: 1.5,
+            }}
+            {...props}
+          >
+            {children}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Link = ({ href, children }) => (
+  <a 
+    href={href} 
+    target="_blank" 
+    rel="noopener noreferrer"
+    className="markdown-link"
+  >
+    {children}
+  </a>
+);
+
+const Table = ({ children }) => (
+  <div className="markdown-table-container">
+    <table className="markdown-table">{children}</table>
+  </div>
+);
 
 function Chat() {
-  const { newChat, prevChats, reply } = useContext(MyContext);
-  const [latestReply, setLatestReply] = useState(null);
+  const { newChat, prevChats, reply, isTyping } = useContext(MyContext);
+  const [latestReply, setLatestReply] = useState('');
+  const [isTypingComplete, setIsTypingComplete] = useState(true);
+  const messagesEndRef = useRef(null);
 
-  const messages = useMemo(
-    () => (Array.isArray(prevChats) ? prevChats : []),
-    [prevChats],
-  );
+  // Memoize messages to prevent unnecessary re-renders
+  const messages = useMemo(() => {
+    return Array.isArray(prevChats) ? prevChats : [];
+  }, [prevChats]);
 
+  // Handle typing effect for assistant replies
   useEffect(() => {
     if (!reply) {
-      setLatestReply(null);
+      setLatestReply('');
+      setIsTypingComplete(true);
       return;
     }
 
-    const words = reply.split(" ");
+    setIsTypingComplete(false);
     let index = 0;
-
+    const words = reply.split(/(\s+)/); // Split by spaces but keep them
+    
     const timer = setInterval(() => {
-      setLatestReply(words.slice(0, index + 1).join(" "));
-      index += 1;
       if (index >= words.length) {
         clearInterval(timer);
-        setLatestReply(null);
+        setIsTypingComplete(true);
+        return;
       }
-    }, 35);
+      
+      setLatestReply(prev => prev + words[index]);
+      index += 1;
+    }, 16); // ~60fps
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      setLatestReply('');
+    };
   }, [reply]);
 
-  const trailingMessage =
-    messages.length > 0 ? messages[messages.length - 1] : null;
+  // Auto-scroll to bottom when messages or typing state changes
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, latestReply, isTyping]);
 
-  const historyMessages =
-    latestReply !== null && trailingMessage
-      ? messages.slice(0, -1)
-      : messages;
+  // Check if we should show the welcome message
+  const showWelcome = newChat && messages.length === 0;
 
   return (
     <div className="chat-stage">
-      {newChat && (
+      {showWelcome && (
         <div className="chat-empty">
-          <h1>Start a new chat</h1>
-          <p>Ask a question, plan an idea, or explore something new.</p>
+          <h1>Welcome to MyGPT</h1>
+          <p>Ask me anything, explore ideas, or get help with your tasks.</p>
+          
+          <div className="suggestions">
+            <div className="suggestion">
+              "Explain quantum computing in simple terms"
+            </div>
+            <div className="suggestion">
+              "Help me debug this Python code"
+            </div>
+            <div className="suggestion">
+              "What are some healthy dinner ideas?"
+            </div>
+            <div className="suggestion">
+              "Write a professional email to a client"
+            </div>
+          </div>
         </div>
       )}
 
       <div className="chats">
-        {historyMessages.map((chat, index) => (
-          <div
-            className={chat.role === "user" ? "userDiv" : "gptDiv"}
-            key={`${chat.role}-${index}`}
+        {messages.map((message, index) => (
+          <div 
+            key={`${message.role}-${index}-${message.timestamp || index}`}
+            className={`message ${message.role}-message`}
           >
-            {chat.role === "user" ? (
-              <p className="userMessage">{chat.content}</p>
-            ) : (
-              <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-                {chat.content}
-              </ReactMarkdown>
-            )}
+            <div className="message-avatar">
+              {message.role === 'user' ? (
+                <div className="user-avatar">
+                  <FaUser />
+                </div>
+              ) : (
+                <div className="bot-avatar">
+                  <FaRobot />
+                </div>
+              )}
+            </div>
+            <div className="message-content">
+              {renderMessageContent(chat.content)}
+              {chat.role === 'assistant' && (
+                <div className="message-timestamp">
+                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              )}
+            </div>
           </div>
         ))}
 
-        {latestReply !== null && (
-          <div className="gptDiv" key="typing">
-            <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-              {latestReply}
-            </ReactMarkdown>
+        {typing && (
+          <div className="message assistant-message">
+            <div className="message-avatar">
+              <div className="bot-avatar">
+                <FaRobot />
+              </div>
+            </div>
+            <div className="message-content">
+              {latestReply ? (
+                <>
+                  {renderMessageContent(latestReply)}
+                  <div className="typing-indicator">
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                    <span className="dot"></span>
+                  </div>
+                </>
+              ) : (
+                <div className="typing-indicator">
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                  <span className="dot"></span>
+                </div>
+              )}
+            </div>
           </div>
         )}
-
-        {latestReply === null &&
-          trailingMessage &&
-          trailingMessage.role === "assistant" &&
-          typeof trailingMessage.content === "string" && (
-            <div className="gptDiv" key="assistant-final">
-              <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
-                {trailingMessage.content}
-              </ReactMarkdown>
-            </div>
-          )}
       </div>
+      
+      <div ref={messagesEndRef} />
+      
+      {loading && !typing && (
+        <div className="loading-indicator">
+          <FaSpinner className="spinner" />
+          <span>Thinking...</span>
+        </div>
+      )}
     </div>
   );
 }
