@@ -1,4 +1,5 @@
 import { useContext, useMemo, useState, useRef, useEffect } from "react";
+import { v4 as uuidv4 } from 'uuid';
 import { useNavigate } from "react-router-dom";
 import { FiSend, FiPlus, FiSettings, FiLogOut, FiUser, FiZap } from "react-icons/fi";
 import { FaUserCircle } from "react-icons/fa";
@@ -13,9 +14,11 @@ function ChatWindow() {
   const {
     prompt,
     setPrompt,
+    reply, // Added missing reply
     setReply,
     currThreadId,
     setCurrThreadId,
+    prevChats, // Added missing prevChats
     setPrevChats,
     setNewChat,
     setAllThreads,
@@ -44,6 +47,13 @@ function ChatWindow() {
   const handleInput = (e) => {
     setPrompt(e.target.value);
     adjustTextareaHeight();
+  };
+
+  const handleNewChat = () => {
+    setNewChat(true);
+    setCurrThreadId(uuidv4());
+    setPrevChats([]);
+    setReply("");
   };
 
   // Handle key down events
@@ -214,12 +224,7 @@ function ChatWindow() {
     }
   };
 
-  const handleNewChat = () => {
-    setNewChat(true);
-    setCurrThreadId(null);
-    setPrevChats([]);
-    setReply("");
-  };
+
 
   return (
     <div className="chatWindow">
@@ -273,7 +278,7 @@ function ChatWindow() {
               className="dropDownItem"
               onClick={() => {
                 setIsMenuOpen(false);
-                // Handle upgrade
+                navigate("/upgrade");
               }}
             >
               <FiZap size={16} />

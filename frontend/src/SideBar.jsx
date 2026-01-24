@@ -136,15 +136,6 @@ function SideBar() {
             <i className="fa-solid fa-person-chalkboard" />
             Mock Interview
           </NavLink>
-          <NavLink
-            to="/analysis"
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? "sidebar-link-active" : ""}`
-            }
-          >
-            <i className="fa-solid fa-chart-line" />
-            Analysis
-          </NavLink>
         </nav>
       </div>
 

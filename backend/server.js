@@ -6,81 +6,70 @@ import mongoose from "mongoose";
 import chatRoutes from "./routes/chat.js";
 import interviewRoutes from "./routes/interview.js";
 import authRoutes from "./routes/auth.js";
-
-
+import paymentRoutes from "./routes/payment.js";
 
 // Initialize Express app
 const app = express();
 
 // Middleware setup
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "*").split(",").map(origin => origin.trim());
+
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || "*",
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is allowed, or if explicit "*" is set
+    if (allowedOrigins.includes("*") || allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+  },
   credentials: true,
-})); // Allow cross-origin requests
-app.use(express.json()); // Parse JSON request bodies
+}));
+app.use(express.json({ limit: '10mb' }));
 
 
+
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api", chatRoutes);
 app.use("/api/interview", interviewRoutes);
+app.use("/api/payment", paymentRoutes);
 
-// Server port
-const PORT = process.env.PORT || 3000;
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
 
-const uri = process.env.MONGO_URL;
-
-
-const connectDb = async() => {
-  try{
-    await mongoose.connect(uri);
-    console.log(`mongodb is connected successfully`);
-  
-  }catch(err){
-    console.log(`some error ${err}`);
-  }
-
-}
-
-// Start server
-connectDb().then(() => {
- 
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running at${PORT}`);
-    
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Global error:", err);
+  res.status(500).json({ 
+    error: "Internal server error",
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
-// app.post("/test", async (req, res) => {
+// Server port
+const PORT = process.env.PORT || 3000;
+const uri = process.env.MONGO_URL;
 
-//   const message = req.body.message || "Hello";
-//   console.log("User Message:", message);
+const connectDb = async() => {
+  try {
+    await mongoose.connect(uri);
+    console.log(`MongoDB connected successfully`);
+  } catch(err) {
+    console.error(`MongoDB connection error: ${err}`);
+    process.exit(1);
+  }
+};
 
-//   const requestBody = {
-//     contents: [
-//       {
-//         role: "user",
-//         parts: [{ text: message }]
-//       }
-//     ]
-//   };
-
-//   try {
-//     const response = await fetch(
-//       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-//       {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify(requestBody)
-//       }
-//     );
-
-//     const data = await response.json();
-//     console.log("Gemini  response:", data);
-
-//     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
-//     res.send(text);
-//   } catch (e) {
-//     console.error("Error from Gemini API:", e);
-//     res.status(500).send({ error: "Something went wrong with Gemini API" });
-//   }
-// });
+// Start server
+connectDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+});

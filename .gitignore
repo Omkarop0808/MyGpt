@@ -1,4 +1,25 @@
-# ignore env files
+# Environment files
 .env
-backend/.env
-frontend/.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment guides (per user request)
+aws_deployment.md
+install.log
+

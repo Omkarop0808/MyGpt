@@ -1,8 +1,9 @@
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { MyContext } from "../MyContext";
-import { apiRequest, getApiBaseUrl } from "../lib/api";
+import { apiRequest } from "../lib/api";
 import "./AuthPage.css";
+import { FiArrowRight, FiCheck, FiAlertCircle } from "react-icons/fi";
 
 const AuthPage = ({ mode = "login" }) => {
   const navigate = useNavigate();
@@ -20,7 +21,12 @@ const AuthPage = ({ mode = "login" }) => {
   const isSignup = mode === "signup";
   const redirectPath = location.state?.from?.pathname || "/";
 
-  const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+  // Clear errors when switching modes
+  useEffect(() => {
+    setError("");
+    setFieldErrors({});
+    setFormData({ name: "", email: "", password: "" });
+  }, [mode]);
 
   // If user is already authenticated, redirect
   if (user && token) {
@@ -30,76 +36,46 @@ const AuthPage = ({ mode = "login" }) => {
   const validateForm = () => {
     const errors = {};
 
-    // Name validation
     if (isSignup) {
-      if (!formData.name.trim()) {
-        errors.name = "Name is required";
-      } else if (formData.name.trim().length < 2) {
-        errors.name = "Name must be at least 2 characters";
-      } else if (formData.name.trim().length > 60) {
-        errors.name = "Name cannot exceed 60 characters";
-      }
+      if (!formData.name.trim()) errors.name = "Name is required";
+      else if (formData.name.length < 2) errors.name = "Name too short";
     }
 
-    // Email validation
     if (!formData.email.trim()) {
       errors.email = "Email is required";
-    } else {
-      const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
-      if (!emailRegex.test(formData.email.trim())) {
-        errors.email = "Please enter a valid email address";
-      }
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Invalid email address";
     }
 
-    // Password validation
     if (!formData.password) {
       errors.password = "Password is required";
     } else if (formData.password.length < 8) {
-      errors.password = "Password must be at least 8 characters";
-    } else if (isSignup) {
-      if (!/[A-Z]/.test(formData.password)) {
-        errors.password = "Password must contain an uppercase letter";
-      } else if (!/[a-z]/.test(formData.password)) {
-        errors.password = "Password must contain a lowercase letter";
-      } else if (!/[0-9]/.test(formData.password)) {
-        errors.password = "Password must contain a number";
-      }
+      errors.password = "At least 8 characters";
     }
 
     return errors;
   };
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-    // Clear field error when user starts typing
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
     if (fieldErrors[name]) {
-      setFieldErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
+      setFieldErrors(prev => ({ ...prev, [name]: "" }));
     }
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (loading) return;
 
-    // Validate form
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setError("");
       return;
     }
 
-    setFieldErrors({});
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
       const endpoint = isSignup ? "/api/auth/signup" : "/api/auth/login";
@@ -119,116 +95,100 @@ const AuthPage = ({ mode = "login" }) => {
         body: payload,
       });
 
-      if (!profile || !authToken) {
-        throw new Error("Invalid response from server");
-      }
-
       setUser(profile);
       setToken(authToken);
-      navigate(redirectPath, { replace: true });
+      
+      // Force reload to ensure all state and context is fresh
+      window.location.href = redirectPath;
     } catch (err) {
-      const errorMessage = err.message || "Something went wrong. Please try again.";
-      setError(errorMessage);
-      console.error(`${isSignup ? "Signup" : "Login"} error:`, err);
+      setError(err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-hero">
-        <div className="auth-hero-content">
-          <h1>MYGPT</h1>
-          <p>Your personal AI workspace. Crafted for clarity, privacy, and speed.</p>
-          <div className="auth-meta">
-            <span>API base: {apiBaseUrl.replace("https://", "").replace("http://", "")}</span>
-            <span>Encryption: bcrypt + JWT</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="auth-card">
-        <div className="auth-card-header">
-          <h2>{isSignup ? "Create your account" : "Welcome back"}</h2>
-          <p>
-            {isSignup
-              ? "Join the workspace to start your smart conversations."
-              : "Sign in to resume your conversations and threads."}
+    <div className="auth-container">
+      <div className="auth-overlay"></div>
+      
+      <div className="auth-box">
+        <div className="auth-header">
+          <div className="logo-badge">AI</div>
+          <h1>{isSignup ? "Create Account" : "Welcome Back"}</h1>
+          <p className="auth-subtitle">
+            {isSignup 
+              ? "Join the intelligent workspace." 
+              : "Sign in to continue your sessions."}
           </p>
         </div>
 
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+        <form onSubmit={handleSubmit} className="auth-form">
           {isSignup && (
-            <label className="auth-field">
-              <span>Name</span>
+            <div className={`input-group ${fieldErrors.name ? "error" : ""}`}>
+              <label>Full Name</label>
               <input
                 name="name"
                 type="text"
                 placeholder="Ada Lovelace"
                 value={formData.name}
                 onChange={handleChange}
-                autoComplete="name"
-                required
-                minLength={2}
-                maxLength={60}
                 disabled={loading}
-                className={fieldErrors.name ? "error" : ""}
               />
-              {fieldErrors.name && (
-                <span className="auth-field-error">{fieldErrors.name}</span>
-              )}
-            </label>
+              {fieldErrors.name && <span className="error-text">{fieldErrors.name}</span>}
+            </div>
           )}
 
-          <label className="auth-field">
-            <span>Email</span>
+          <div className={`input-group ${fieldErrors.email ? "error" : ""}`}>
+            <label>Email Address</label>
             <input
               name="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder="name@example.com"
               value={formData.email}
               onChange={handleChange}
-              autoComplete="email"
-              required
               disabled={loading}
-              className={fieldErrors.email ? "error" : ""}
             />
-            {fieldErrors.email && (
-              <span className="auth-field-error">{fieldErrors.email}</span>
-            )}
-          </label>
+            {fieldErrors.email && <span className="error-text">{fieldErrors.email}</span>}
+          </div>
 
-          <label className="auth-field">
-            <div className="auth-field-label">
-              <span>Password</span>
-              <Link to={isSignup ? "/login" : "/signup"}>
-                {isSignup ? "Already have an account?" : "Need an account?"}
-              </Link>
-            </div>
+          <div className={`input-group ${fieldErrors.password ? "error" : ""}`}>
+            <label>Password</label>
             <input
               name="password"
               type="password"
               placeholder="••••••••"
               value={formData.password}
               onChange={handleChange}
-              autoComplete={isSignup ? "new-password" : "current-password"}
-              required
-              minLength={8}
               disabled={loading}
-              className={fieldErrors.password ? "error" : ""}
             />
-            {fieldErrors.password && (
-              <span className="auth-field-error">{fieldErrors.password}</span>
+            {fieldErrors.password && <span className="error-text">{fieldErrors.password}</span>}
+          </div>
+
+          {error && (
+            <div className="auth-error-banner">
+              <FiAlertCircle />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button type="submit" className="auth-btn" disabled={loading}>
+            {loading ? <div className="spinner" /> : (
+              <>
+                {isSignup ? "Sign Up" : "Sign In"}
+                <FiArrowRight />
+              </>
             )}
-          </label>
-
-          {error && <p className="auth-error">{error}</p>}
-
-          <button type="submit" className="auth-submit" disabled={loading}>
-            {loading ? "Processing…" : isSignup ? "Sign up" : "Log in"}
           </button>
         </form>
+
+        <div className="auth-footer">
+          <p>
+            {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
+            <Link to={isSignup ? "/login" : "/signup"}>
+              {isSignup ? "Sign in" : "Sign up"}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

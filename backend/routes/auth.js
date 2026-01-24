@@ -106,8 +106,8 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Find user by email
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    // Find user by email - include password for comparison
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
     if (!user) {
       return res.status(401).json({ 
         error: "Invalid email or password" 

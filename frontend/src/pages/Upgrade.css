@@ -1,0 +1,130 @@
+.upgrade-container {
+    padding: 2rem 1rem;
+    color: #ececf1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+    /* Adjust based on sidebar/navbar */
+}
+
+.upgrade-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.upgrade-subtitle {
+    color: #c5c5d2;
+    margin-bottom: 3rem;
+    text-align: center;
+}
+
+.plan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    width: 100%;
+    max-width: 800px;
+}
+
+.plan-card {
+    background: #202123;
+    border: 1px solid #4d4d4f;
+    border-radius: 8px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.plan-card:hover {
+    border-color: #6b6c7b;
+}
+
+.plan-card.active {
+    border: 2px solid #3b82f6;
+    /* Blue border as requested */
+    box-shadow: 0 0 0 1px #3b82f6;
+    background: #202123;
+}
+
+.current-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #3b82f6;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.plan-header h3 {
+    font-size: 1.25rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.plan-price {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 1.5rem 0;
+}
+
+.plan-price span {
+    font-size: 1rem;
+    color: #9b9b9b;
+    font-weight: 400;
+}
+
+.plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 2rem 0;
+    flex-grow: 1;
+}
+
+.plan-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+    color: #d1d5db;
+}
+
+.check-icon {
+    color: #10a37f;
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.upgrade-btn {
+    background: #10a37f;
+    color: white;
+    border: none;
+    padding: 0.8rem 1rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+    margin-top: auto;
+}
+
+.upgrade-btn:hover:not(:disabled) {
+    background: #1a7f64;
+}
+
+.upgrade-btn:disabled {
+    background: #40414f;
+    color: #8e8ea0;
+    cursor: not-allowed;
+}

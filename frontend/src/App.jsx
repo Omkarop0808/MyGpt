@@ -13,8 +13,8 @@ import {
   useLocation,
 } from "react-router-dom";
 import MockInterview from "./MockInterview";
-import Analysis from "./Analysis";
 import AuthPage from "./pages/AuthPage";
+import Upgrade from "./pages/Upgrade";
 
 const DashboardLayout = () => (
   <div className="app-shell">
@@ -149,7 +149,7 @@ function App() {
           >
             <Route index element={<ChatWindow />} />
             <Route path="mockinterview" element={<MockInterview />} />
-            <Route path="analysis" element={<Analysis />} />
+            <Route path="upgrade" element={<Upgrade />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

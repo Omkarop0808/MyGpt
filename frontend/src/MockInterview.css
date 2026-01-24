@@ -1,72 +1,166 @@
 /* MockInterview.css */
 
-body, html {
-  margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", sans-serif;
-  background: #121212;
-  color: white;
-  height: 100%;
-}
-
-.interview-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  min-height: 100vh;
-  background: linear-gradient(145deg, #1f1f1f, #121212);
-}
-
-.question-card, .end-screen {
-  background-color: #1e1e1e;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 255, 255, 0.15);
-  width: 100%;
+.mock-interview-container {
   max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  color: #e0e0e0;
+  font-family: 'Inter', sans-serif;
+}
+
+.mock-interview-container h1 {
   text-align: center;
-  transition: 0.3s;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.question-text {
-  font-size: 1.3rem;
+.subtitle {
+  text-align: center;
+  color: #a0a0a0;
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.interview-form {
+  background: #1e1e1e;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin-bottom: 2rem;
+}
+
+.form-group {
   margin-bottom: 1.5rem;
-  color: #aaf6ff;
 }
 
-.btn-group {
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #2d2d2d;
+  color: #fff;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4facfe;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  margin: 1.5rem 0;
+  align-items: center;
 }
 
-button {
-  background: #0a84ff;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+}
+
+.error-msg {
+  background: rgba(255, 77, 77, 0.1);
+  border: 1px solid #ff4d4d;
+  color: #ff4d4d;
+  padding: 1rem;
   border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  text-align: center;
+  margin-bottom: 2rem;
 }
 
-button:hover {
-  background: #0066cc;
+.result-container {
+  background: #1e1e1e;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.5s ease-out;
 }
 
-.transcript {
-  margin-top: 1rem;
-  color: #ccc;
+.result-container h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #fff;
+}
+
+.score-badge {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 2rem;
+  color: #a0a0a0;
+}
+
+.score-badge span {
+  color: #4facfe;
+  font-size: 2rem;
+}
+
+.result-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #333;
+}
+
+.result-section:last-child {
+  border-bottom: none;
+}
+
+.result-section h3 {
+  color: #00f2fe;
+  margin-bottom: 0.8rem;
+  font-size: 1.2rem;
+}
+
+.result-section p {
+  line-height: 1.6;
+  color: #e0e0e0;
+}
+
+.better-answer {
+  background: #2d2d2d;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #4facfe;
   font-style: italic;
 }
 
-.warning {
-  color: red;
-  padding: 2rem;
-  text-align: center;
-  font-size: 1.2rem;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

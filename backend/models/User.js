@@ -26,6 +26,15 @@ const userSchema = new mongoose.Schema(
       minlength: [8, "Password must be at least 8 characters long"],
       select: false,
     },
+    subscriptionPlan: {
+      type: String,
+      default: "free",
+      enum: ["free", "pro"],
+    },
+    stripeCustomerId: {
+      type: String,
+      select: false,
+    },
   },
   {
     timestamps: true,

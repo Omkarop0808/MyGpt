@@ -103,7 +103,7 @@ router.post("/chat", async (req, res) => {
 
     console.log("🔵 Calling Gemini API with retry logic...");
     const assistantReply = await getGeminiApiResponse(message);
-    console.log("🟢 Got Gemini reply:", assistantReply);
+    console.log(" Got Gemini reply:", assistantReply);
 
     thread.message.push({
       role: "assistant",
@@ -111,7 +111,7 @@ router.post("/chat", async (req, res) => {
     });
 
     await thread.save();
-    console.log("✅ Thread saved to database");
+    console.log(" Thread saved to database");
 
     res.json({
       reply: assistantReply.response,
